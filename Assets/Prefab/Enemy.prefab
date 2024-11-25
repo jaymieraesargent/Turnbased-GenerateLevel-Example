@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 5337057818247489857}
   - component: {fileID: 5381411801542747606}
   - component: {fileID: 5157144707509920923}
+  - component: {fileID: -4943552392476436825}
   m_Layer: 0
   m_Name: Enemy
   m_TagString: Enemy
@@ -107,3 +108,33 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &-4943552392476436825
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8062735130930488360}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 046ebf4e6f6e8e043b6f8b8db0ab222d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  actionPoints: 4
+  currentActionPoints: 0
+  meleeRange: 1
+  rangeAttackRange: 3
+  moveCost: 1
+  turnCost: 1
+  turn180Cost: 2
+  meleeAttackCost: 1
+  rangeAttackCost: 1
+  currentTile: {fileID: 0}
+  targetTile: {fileID: 0}
+  playerTransform: {fileID: 0}
+  path: []
+  levelGeneration: {fileID: 0}
+  enemyTurn: 0
+  layerMask:
+    serializedVersion: 2
+    m_Bits: 256

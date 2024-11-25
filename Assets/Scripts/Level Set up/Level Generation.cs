@@ -9,7 +9,7 @@ public class LevelGeneration : MonoBehaviour
     // pixelColorMappings: An array of PixelToObject that maps specific colors to prefabs (game objects) in the game world.
     public PixelToObject[] pixelColorMappings;
     // grid: A Dictionary<Vector2Int, Tile> storing the generated tiles by their grid position.
-    private Dictionary<Vector2Int, Tile> grid = new Dictionary<Vector2Int, Tile>();
+    public Dictionary<Vector2Int, Tile> grid = new Dictionary<Vector2Int, Tile>();
     // tilePositions: A Dictionary<Vector2Int, GameObject> for tracking the game objects (tiles) at specific grid positions.
     private Dictionary<Vector2Int, GameObject> tilePositions = new Dictionary<Vector2Int, GameObject>();
     // pixelColor: Stores the color of the current pixel being processed.
@@ -24,6 +24,8 @@ public class LevelGeneration : MonoBehaviour
     public GameObject enemy;
     // count: A counter used to limit the number of times the enemy spawns.
     int count = 0;
+    public int tileSize = 4;
+    public List<Vector2Int> spawnPositions = new List<Vector2Int>();
     #endregion
 
     public Vector3 GetTileCenter(Vector2Int gridPosition)
@@ -51,7 +53,10 @@ public class LevelGeneration : MonoBehaviour
             grid[position].IsOccupied = isOccupied;
         }
     }
-
+    /// <summary>
+    /// Called by Unity when the script starts. It invokes GenerateLevel(levelMap) to generate the level 
+    /// and SetNeighbors() to set up the neighboring relationships between tiles.
+    /// </summary>
     void Start()
     {
         GenerateLevel(levelMap);
@@ -60,64 +65,80 @@ public class LevelGeneration : MonoBehaviour
     }
     public void GenerateLevel(Texture2D mapTexture)
     {
-        //Scan whole Texture and get positions of objects
+        // Scan whole Texture and get positions of objects
+        // Loops through each pixel in the texture map (from x = 0 to width and y = 0 to height).
         for (int x = 0; x < mapTexture.width; x++)
         {
             for (int y = 0; y < mapTexture.height; y++)
             {
+                // For each pixel, it calls GenerateObject(x, y, mapTexture) to create the corresponding object(tile) based on the pixel color.
                 GenerateObject(x, y, mapTexture);
             }
+        }
+        // Randomly select spawn positions for player and enemy after generating the level
+        if (spawnPositions.Count > 0)
+        {
+            Vector2Int playerSpawnPos = spawnPositions[Random.Range(0, spawnPositions.Count)];
+            Vector3 playerPosition = GetTileCenter(playerSpawnPos);
+            Instantiate(player, playerPosition, Quaternion.identity);
+
+            // Ensure enemy spawns at a different position
+            Vector2Int enemySpawnPos;
+            do
+            {
+                enemySpawnPos = spawnPositions[Random.Range(0, spawnPositions.Count)];
+            }
+            while (enemySpawnPos == playerSpawnPos);
+            Vector3 enemyPosition = GetTileCenter(enemySpawnPos);
+            Instantiate(enemy, enemyPosition, Quaternion.identity);
         }
     }
     public void GenerateObject(int x, int y, Texture2D map)
     {
 
-        //Read Pixel Colour
+        // Reads the pixel color at(x, y) on the map using map.GetPixel(x, y).
         pixelColor = map.GetPixel(x, y);
+        // If the pixel is fully transparent (alpha = 0)
         if (pixelColor.a == 0)
         {
-            //do nothing
-            Debug.Log("Skip");
-
+            //  it skips processing.
             return;
         }
-
-        foreach (PixelToObject pixelColorMapping in pixelColorMappings)
+        // otherwise the pixel is non-transparent
+        else
         {
-            Debug.Log("Check");
-            //Scan pixelColorMappings Array for Matching colour Mapping
-            if (pixelColorMapping.pixelColor.Equals(pixelColor))
+           // iterates through the pixelColorMappings array
+            foreach (PixelToObject pixelColorMapping in pixelColorMappings)
             {
-                Debug.Log("Load");
-                count++;
-
-                Vector3 position = new Vector3(x + (4 * x), 0, y + (4 * y));
-                GameObject prefabClone = Instantiate(pixelColorMapping.prefab, position, Quaternion.identity, transform);
-                bool isWalkable = DetermineWalkability(prefabClone); // You can define based on prefab
-                Vector2Int gridPosition = new Vector2Int(x, y);
-                prefabClone.name = $"Tile_{x}_{y}";
-                tilePositions[gridPosition] = prefabClone;
-                Tile tile = prefabClone.GetComponentInChildren<Tile>();
-                tile.SetTile(gridPosition, isWalkable);
-                grid[gridPosition] = tile;
-
-                Vector3 entityPos = new Vector3(position.x, 1, position.z);
-                if (!playerSpawn)
+                //Scan pixelColorMappings Array for Matching colour Mapping
+                if (pixelColorMapping.pixelColor.Equals(pixelColor))
                 {
+                    count++;
 
-                    //spawn Player
-                    Instantiate(player, entityPos, Quaternion.identity);
-                    playerSpawn = true;
-                }
-                if (count > 5 && !enemySpawn)
-                {
-                    Instantiate(enemy, entityPos, Quaternion.identity);
-                    enemySpawn = true;
-                }
+                    Vector3 position = new Vector3(x + (tileSize * x), 0, y + (tileSize * y));
+                    // instantiate the corresponding prefab at the correct position
+                    GameObject prefabClone = Instantiate(pixelColorMapping.prefab, position, Quaternion.identity, transform);
+                    // It checks if the tile is walkable using DetermineWalkability().
+                    bool isWalkable = DetermineWalkability(prefabClone);
+                    Vector2Int gridPosition = new Vector2Int(x, y);
+                    prefabClone.name = $"Tile_{x}_{y}";
+                    tilePositions[gridPosition] = prefabClone;
+                    Tile tile = prefabClone.GetComponentInChildren<Tile>();
+                    tile.SetTile(gridPosition, isWalkable);
+                    // stores the Tile in the grid dictionary with the position as the key.
+                    grid[gridPosition] = tile;
 
+                    Vector3 entityPos = new Vector3(position.x, 1, position.z);
+                    if (isWalkable)
+                    {
+                        // Add to possible spawn positions if walkable
+                        spawnPositions.Add(gridPosition); 
+
+                    }
+                }
             }
         }
-    }  
+    }
 
     public void SetNeighbors()
     {
@@ -129,7 +150,7 @@ public class LevelGeneration : MonoBehaviour
 
                 if (grid.ContainsKey(gridPosition))
                 {
-                    Tile currentTile = grid[gridPosition];                
+                    Tile currentTile = grid[gridPosition];
                     // Up
                     Vector2Int neighborPosition = new Vector2Int(x, z + 1);
                     if (z + 1 < levelMap.height && grid.ContainsKey(neighborPosition))
@@ -158,6 +179,24 @@ public class LevelGeneration : MonoBehaviour
             }
         }
     }
+    public Tile FindTile(Vector3 position)
+    {
+        // Convert world position to grid position based on tile size
+        int x = Mathf.FloorToInt(position.x / tileSize);
+        int y = Mathf.FloorToInt(position.z / tileSize); // Assuming the grid is flat on the XZ plane
+
+        Vector2Int gridPosition = new Vector2Int(x, y);
+
+        // Check if the tile exists in the grid dictionary
+        if (tilePositions.ContainsKey(gridPosition))
+        {
+            return grid[gridPosition]; // Return the tile at the grid position
+        }
+
+        return null; // Return null if the tile does not exist
+    }
+
+
 }
 
 [System.Serializable]//View in the Inspector

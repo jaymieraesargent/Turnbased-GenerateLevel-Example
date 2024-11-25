@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
+  m_IndirectSpecularColor: {r: 0.12731749, g: 0.13414757, b: 0.1210787, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -398,7 +398,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!108 &410087040
 Light:
   m_ObjectHideFlags: 0
@@ -987,7 +987,7 @@ GameObject:
   - component: {fileID: 791669732}
   m_Layer: 0
   m_Name: Level
-  m_TagString: Untagged
+  m_TagString: Level
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1010,6 +1010,7 @@ MonoBehaviour:
     prefab: {fileID: 439988821660076365, guid: b0c276dcd70d29e44812c26c63dc0465, type: 3}
   player: {fileID: 8020413757628815614, guid: 5de727e1b21989b4f913d601bd15a6a0, type: 3}
   enemy: {fileID: 8062735130930488360, guid: 35c665d1c46b1564fb70ec374b49c820, type: 3}
+  tileSize: 4
 --- !u!4 &791669733
 Transform:
   m_ObjectHideFlags: 0
