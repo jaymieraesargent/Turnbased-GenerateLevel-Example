@@ -7,7 +7,7 @@ public class Enemy : MonoBehaviour
 {
     public int actionPoints = 4;
     public int currentActionPoints;
-    private bool playerDetected = false;
+    [SerializeField] private bool playerDetected = false;
 
     public int meleeRange = 1;
     public int rangeAttackRange = 3;
@@ -22,12 +22,11 @@ public class Enemy : MonoBehaviour
     public Transform playerTransform;
     public List<Tile> path = new List<Tile>();
     public LevelGeneration levelGeneration;
-    private List<Tile> pathToPlayer = new List<Tile>();
+    [SerializeField] private List<Tile> pathToPlayer = new List<Tile>();
     public bool enemyTurn = false;
-    private float turnTimer = 0f; // Timer to control turn rate
-    private float turnInterval = 1f; // Interval for each turn (in seconds)
+    [SerializeField] private float turnTimer = 0f; // Timer to control turn rate
+    [SerializeField] private float turnInterval = 1f; // Interval for each turn (in seconds)
     public LayerMask layerMask;
-
     // Define directions to check for neighbors
     Vector2Int[] directions = new Vector2Int[]
     {
@@ -94,7 +93,6 @@ public class Enemy : MonoBehaviour
 
     private Tile FindCurrentTile()
     {
-        Ray ray = new Ray();
         RaycastHit hit;
         if (Physics.Raycast(transform.position, transform.TransformDirection(Vector3.down), out hit, 3,layerMask))
         {
@@ -151,35 +149,85 @@ public class Enemy : MonoBehaviour
             tile.UpdateTileMaterial(false, 0); // Reset to default color
         }
     }
-
     public void BeginTurn(Transform player)
     {
         currentActionPoints = actionPoints;
         playerTransform = player;
         playerDetected = false;
-        path.Clear();
-        Vector3 currentPosition = transform.position;
-        Tile startTile = currentTile;
 
-        // Pick an initial point directly adjacent to the current tile
-        Tile initialTile = GetAdjacentTile(startTile);
+        // Determine the current tile
+        currentTile = FindCurrentTile();
 
-        if (initialTile != null)
+        // Reset the color of the current tile at the start of the turn
+        currentTile.UpdateTileMaterial(false, 0);
+
+        // If there's an existing path, continue from the last position
+        if (path.Count > 0)
         {
-            targetTile = initialTile;
-            path.Add(initialTile);
-            ExtendPath(initialTile, 4);
+            currentTile = path[path.Count - 1];
         }
         else
         {
-            targetTile = startTile;
-            path.Clear();
+            currentTile = FindCurrentTile();
+        }
+
+        // Set or update the target tile
+        if (path.Count < 4 && path.Count > 0)
+        {
+            Tile previousTarget = path[path.Count - 1];
+            ExtendPath(previousTarget, path.Count + 4); // Extend the path 4 more tiles beyond the previous target
+        }
+        else if (path.Count == 0)
+        {
+            ExtendPath(currentTile, 4); // Start a new path from the current tile
         }
 
         UpdateTileMaterials();
         enemyTurn = true;
     }
+    private void ExtendPath(Tile current, int targetLength)
+    {
+        // Ensure the path extends off the current tile
+        while (path.Count < targetLength)
+        {
+            List<Tile> validNeighbors = new List<Tile>();
 
+            // Collect all valid neighboring tiles
+            foreach (var direction in directions)
+            {
+                Vector2Int neighborPos = current.Position + direction;
+                if (levelGeneration.grid.ContainsKey(neighborPos))
+                {
+                    Tile neighborTile = levelGeneration.grid[neighborPos];
+                    if (neighborTile.IsWalkable && !path.Contains(neighborTile))
+                    {
+                        validNeighbors.Add(neighborTile);
+                    }
+                }
+            }
+
+            // Add a valid neighboring tile or backtrack if no valid neighbors
+            if (validNeighbors.Count > 0)
+            {
+                Tile nextTile = validNeighbors[Random.Range(0, validNeighbors.Count)];
+                path.Add(nextTile);
+                current = nextTile;
+            }
+            else
+            {
+                // Backtrack only if there are no valid neighbors and more than one tile in the path
+                if (path.Count > 1)
+                {
+                    current = path[path.Count - 2]; // Move to the previous tile
+                    path.RemoveAt(path.Count - 1); // Remove the current tile from the path
+                }
+                else
+                {
+                    break; // No more moves possible
+                }
+            }
+        }
+    }
     private Tile GetAdjacentTile(Tile startTile)
     {
         List<Tile> potentialTiles = new List<Tile>();
@@ -200,44 +248,14 @@ public class Enemy : MonoBehaviour
 
         return null; // No valid adjacent tiles found
     }
-    private void ExtendPath(Tile current, int targetLength)
-    {
-        while (path.Count < targetLength)
-        {
-            List<Tile> neighbors = new List<Tile>();
-            foreach (var direction in directions)
-            {
-                Vector2Int neighborPos = current.Position + direction;
-                if (levelGeneration.grid.ContainsKey(neighborPos) && levelGeneration.grid[neighborPos].IsWalkable && !path.Contains(levelGeneration.grid[neighborPos]))
-                {
-                    neighbors.Add(levelGeneration.grid[neighborPos]);
-                }
-            }
-
-            if (neighbors.Count > 0)
-            {
-                Tile nextTile = neighbors[Random.Range(0, neighbors.Count)];
-                path.Add(nextTile);
-                current = nextTile;
-            }
-            else
-            {
-                if (path.Count > 1)
-                {
-                    path.Add(path[path.Count - 2]); // Backtrack by adding the previous tile
-                }
-                else
-                {
-                    break; // No more moves possible
-                }
-            }
-        }
-    }
+  
     private bool CheckPlayerDetection()
     {
-        // Check if the player is within a detection range (optional)
+        // Check if the player is within a detection range
         float detectionRange = 10f; // Adjust the range as needed
         float distanceToPlayer = Vector3.Distance(transform.position, playerTransform.position);
+
+        Debug.Log($"Distance to player: {distanceToPlayer}");
 
         if (distanceToPlayer > detectionRange)
         {
@@ -252,17 +270,27 @@ public class Enemy : MonoBehaviour
         RaycastHit hit;
         int layerMask = LayerMask.GetMask("Obstacles"); // Assuming you have an "Obstacles" layer
 
+        Debug.Log($"Casting ray from {transform.position} to {playerTransform.position}");
+
         // Cast a ray from the enemy's position towards the player
-        if (Physics.Raycast(transform.position, directionToPlayer, out hit, Mathf.Infinity, layerMask))
+        if (Physics.Raycast(transform.position, directionToPlayer, out hit, detectionRange, layerMask))
         {
             // If the ray hits something, check if it's the player
+            Debug.Log($"Ray hit: {hit.transform.name}");
             if (hit.transform == playerTransform)
             {
                 playerDetected = true;
+                Debug.Log("Player detected");
                 return true; // The player is detected
             }
+            else
+            {
+                Debug.Log("Ray hit an obstacle, not the player");
+            }
         }
+
         playerDetected = false;
+        Debug.Log("Player not detected");
         return false; // No line of sight to the player, or the player is blocked by an obstacle
     }
 
@@ -279,20 +307,21 @@ public class Enemy : MonoBehaviour
 
             }
         }
-    }
+    }   
     private void FollowPath(bool playerPath = false)
     {
         List<Tile> currentPath = playerPath ? pathToPlayer : path;
 
-        if (currentPath.Count > 0)
+        // Only move if the timer exceeds the interval
+        if (turnTimer >= turnInterval && currentActionPoints > 0 && currentPath.Count > 0)
         {
             Tile nextTile = currentPath[0];
             int movementCost = GetMovementCost(currentTile, nextTile);
 
-            // Check if the enemy needs to rotate to face the next tile
             if (!IsFacingTile(nextTile))
             {
                 TurnToFaceTile(nextTile);
+                turnTimer = 0f; // Reset the timer after turning
             }
             else if (currentActionPoints >= movementCost)
             {
@@ -314,9 +343,13 @@ public class Enemy : MonoBehaviour
                     pathPositionRatio = Mathf.Clamp(pathPositionRatio, 0f, 1f);
                     tile.UpdateTileMaterial(true, pathPositionRatio);
                 }
+
+                turnTimer = 0f; // Reset the timer after moving
             }
         }
     }
+
+
 
     private void TurnToFaceTile(Tile tile)
     {

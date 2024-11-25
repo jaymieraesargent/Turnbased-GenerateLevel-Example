@@ -14,10 +14,6 @@ public class LevelGeneration : MonoBehaviour
     private Dictionary<Vector2Int, GameObject> tilePositions = new Dictionary<Vector2Int, GameObject>();
     // pixelColor: Stores the color of the current pixel being processed.
     private Color pixelColor;
-    // enemySpawn: Flags to check if the enemy has already been spawned.
-    bool enemySpawn = false;
-    // playerSpawn: Flags to check if the player has already been spawned.
-    bool playerSpawn = false;
     //player: Prefabs for the player character.
     public GameObject player;
     // enemy: Prefabs for the enemy character.
